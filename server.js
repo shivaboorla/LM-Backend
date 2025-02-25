@@ -25,6 +25,16 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
+const ItemSchema = new mongoose.Schema({
+  policyNumber: { type: String, required: true },
+  customerId: { type: String},
+  policyType: { type: String},
+  status: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Item = mongoose.model('Item', ItemSchema);
+
 // Secret key for JWT
 const secretKey = 'your_secret_key';
 
@@ -140,6 +150,75 @@ app.get('/api/dashboard', verifyToken, (req, res) => {
 //       }
 //     });
 //   }
+});
+
+// Create an item (Admin only)
+app.post('/api/items', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Admins only.' });
+  }
+  try {
+    const newItem = new Item(req.body);
+    const savedItem = await newItem.save();
+    res.status(201).json({ message: 'Item created successfully', data: savedItem });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create item' });
+  }
+});
+
+// Get all items (All authenticated users)
+app.get('/api/items', verifyToken, async (req, res) => {
+  try {
+    const items = await Item.find();
+    res.json({ message: 'Items fetched successfully', data: items });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+// Get a single item by ID (All authenticated users)
+app.get('/api/items/:id', verifyToken, async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.json({ message: 'Item fetched successfully', data: item });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch item' });
+  }
+});
+
+// Update an item (Admin only)
+app.put('/api/items/:id', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Admins only.' });
+  }
+  try {
+    const updatedItem = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedItem) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.json({ message: 'Item updated successfully', data: updatedItem });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+// Delete an item (Admin only)
+app.delete('/api/items/:id', verifyToken, async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Admins only.' });
+  }
+  try {
+    const deletedItem = await Item.findByIdAndDelete(req.params.id);
+    if (!deletedItem) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
